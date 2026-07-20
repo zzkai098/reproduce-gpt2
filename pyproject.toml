@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reproduce-gpt2"
+version = "0.1.0"
+description = "A faithful, from-scratch reproduction of OpenAI's GPT-2 (124M) in PyTorch."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Zhankai Zhang" }]
+dependencies = [
+    "torch>=2.0",
+    "numpy",
+    "tiktoken",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "transformers"]  # transformers only to load the reference GPT-2 weights in tests
+
+[tool.setuptools.packages.find]
+include = ["gpt2*"]

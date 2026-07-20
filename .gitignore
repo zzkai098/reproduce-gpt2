@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Checkpoints, data shards, logs
+*.pt
+*.bin
+*.npy
+data/
+out/
+logs/
+
+# Envs / editors
+.venv/
+.env
+.DS_Store
+.vscode/
+.idea/
+
+# Notebooks
+.ipynb_checkpoints/
