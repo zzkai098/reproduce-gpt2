@@ -190,35 +190,57 @@ class GPT(nn.Module):
 
         return model
     
+    
+class DataLoaderLite:
+    def __init__(self, B, T):
+        self.B = B
+        self.T = T
+        
+        with open('./data/input.txt', 'r') as f:
+            text = f.read()    
+        enc = tiktoken.get_encoding('gpt2')
+        tokens = enc.encode(text)
+        
+        self.tokens = torch.tensor(tokens)
+        
+        self.current_position = 0 # state
+        
+    def next_batch(self):
+        B, T = self.B, self.T
 
+        buf = self.tokens[self.current_position : self.current_position + B*T + 1]
+        x = buf[:-1].view(B, T)
+        y = buf[1:].view(B, T)
+        self.current_position += B * T
+        
+        if self.current_position + (B * T + 1) > len(self.tokens):
+            self.current_position = 0
+        
+        return x, y
 
 # ------------------------------------------------------------------------
 if __name__ == "__main__":
+    import tiktoken
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"using device: {device}")
 
-    # Tokenizer
-    import tiktoken
-    enc = tiktoken.get_encoding('gpt2')
-    
-    # get data batch and encode
-    with open('../data/input.txt', 'r') as f:
-        text = f.read()
-        
-    text = text[:1000]
-    tokens = enc.encode(text)
-    B, T = 4, 32
-    buf = torch.tensor(tokens[:B*T + 1])
-    x = buf[:-1].view(B, T)
-    y = buf[1:].view(B, T)
-    
-    
-    # get logits 
+    train_loader = DataLoaderLite(B=4, T=32)
     model = GPT(GPTConfig())
     model.to(device)
 
-    logits, loss = model(x, y)
-    print(loss) # 11.0239 (-ln(1/50257) initial is uniform distribution)
+    # optimize
+    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+    for i in range(50):
+        optimizer.zero_grad()
+        xb, yb = train_loader.next_batch()
+        xb, yb = xb.to(device), yb.to(device)
+        logits, loss = model(xb, yb)
+        loss.backward()
+        optimizer.step()
+        print(f"step {i}, loss: {loss.item()}")
+        
+        
+        
         
     import sys; sys.exit(0) 
     
