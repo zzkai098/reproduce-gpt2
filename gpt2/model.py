@@ -112,7 +112,7 @@ class GPT(nn.Module):
         ))        
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
     
-    def forward(self, idx):
+    def forward(self, idx, targets=None):
         #idx is B, T
         B, T = idx.size()
         assert T <= self.config.block_size, f"Cannot forward sequence of length {T}, block size is {self.config.block_size}"
@@ -129,8 +129,14 @@ class GPT(nn.Module):
         # final layer norm and the classifier
         x = self.transformer.ln_f(x) # (B, T, n_embd)
         logits = self.lm_head(x) # (B, T, vocab_size)
+        loss = None
         
-        return logits
+        if targets is not None:
+            logits = logits.view(-1, logits.size(-1)) # (B * T, vocab_size)
+            targets = targets.view(-1) #(B * T)
+            loss = F.cross_entropy(logits, targets)
+            
+        return logits, loss
                 
     @classmethod
     def from_pretrained(cls, model_type):
@@ -188,8 +194,6 @@ class GPT(nn.Module):
 
 # ------------------------------------------------------------------------
 if __name__ == "__main__":
-    num_return_seq = 5
-    max_length = 30
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"using device: {device}")
 
@@ -211,15 +215,17 @@ if __name__ == "__main__":
     
     # get logits 
     model = GPT(GPTConfig())
-    # model = GPT.from_pretrained('gpt2')
     model.to(device)
-    logits = model(x)
-    
-    print(logits.shape)
-    import sys; sys.exit(0)
+
+    logits, loss = model(x, y)
+    print(loss) # 11.0239 (-ln(1/50257) initial is uniform distribution)
+        
+    import sys; sys.exit(0) 
     
 
     # generate
+    num_return_seq = 5
+    max_length = 30
     model.eval()
     torch.manual_seed(42)
     while x.size(1) < max_length:
