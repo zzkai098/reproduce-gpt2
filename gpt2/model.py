@@ -187,6 +187,57 @@ class GPT(nn.Module):
 
 
 # ------------------------------------------------------------------------
+if __name__ == "__main__":
+    num_return_seq = 5
+    max_length = 30
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"using device: {device}")
 
-
+    # Tokenizer
+    import tiktoken
+    enc = tiktoken.get_encoding('gpt2')
     
+    # get data batch and encode
+    with open('../data/input.txt', 'r') as f:
+        text = f.read()
+        
+    text = text[:1000]
+    tokens = enc.encode(text)
+    B, T = 4, 32
+    buf = torch.tensor(tokens[:B*T + 1])
+    x = buf[:-1].view(B, T)
+    y = buf[1:].view(B, T)
+    
+    
+    # get logits 
+    model = GPT(GPTConfig())
+    # model = GPT.from_pretrained('gpt2')
+    model.to(device)
+    logits = model(x)
+    
+    print(logits.shape)
+    import sys; sys.exit(0)
+    
+
+    # generate
+    model.eval()
+    torch.manual_seed(42)
+    while x.size(1) < max_length:
+        with torch.no_grad():
+            logits = model(x) #(B, T, vocab_size)
+            logits = logits [:, -1, :] #(B, vocab_size)
+            probs = F.softmax(logits, dim=-1) # (B, vocab_size)
+            
+            #top-K
+            topk_probs, topk_indices = torch.topk(probs, 50, dim=-1)  # (B, 50) from big to small,  (B, 50)
+            ix = torch.multinomial(topk_probs, 1) # (B, 1), ix is the index in topk_probs e.g. ix   # (B, 1)  比如 [[0], [3], [1], [7], [0]]
+            xcol = torch.gather(topk_indices, -1, ix) # get the real idx, use ix as index, search form topk_indices
+            x = torch.cat((x, xcol), dim=-1)
+
+    #decode
+    for i in range(num_return_seq):
+        tokens = x[i, :max_length].tolist()
+        decoded = enc.decode(tokens)
+        print(">", decoded)
+
+        
