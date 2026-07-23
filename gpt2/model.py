@@ -21,6 +21,7 @@ official weights from Hugging Face.
 Shape convention: B = batch, T = sequence length, C = n_embd.
 """
 from dataclasses import dataclass
+import tiktoken
 import math
 import torch
 import torch.nn as nn
@@ -44,7 +45,7 @@ class CausalSelfAttention(nn.Module):
         assert config.n_embd % config.n_head == 0        
         self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd) # key, query, Value projections for all heads        
         self.c_proj = nn.Linear(config.n_embd, config.n_embd) # projection
-        self.c_proj.NANOGPT_SCALE_INIT = 1
+        self.c_proj.GPT_SCALE_INIT = 1
         self.n_head = config.n_head
         self.n_embd = config.n_embd
         self.register_buffer('bias', torch.tril(torch.ones(config.block_size, config.block_size))
@@ -76,7 +77,7 @@ class MLP(nn.Module):
         self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd)
         self.gelu = nn.GELU(approximate='tanh')
         self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd)
-        self.c_proj.NANOGPT_SCALE_INIT = 1
+        self.c_proj.GPT_SCALE_INIT = 1
         
     def forward(self, x):
         x = self.c_fc(x) # (B,T, n_embd) ->  (B,T, 4 * n_embd) 
@@ -149,7 +150,7 @@ class GPT(nn.Module):
     def _init_weights(self, module):
         if isinstance(module, nn.Linear):
             std = 0.02
-            if hasattr(module, 'NANOGPT_SCALE_INIT'):
+            if hasattr(module, 'GPT_SCALE_INIT'):
                 std *= (2 * self.config.n_layer) ** -0.5
             torch.nn.init.normal_(module.weight, mean=0.0, std=std)
             if module.bias is not None:
@@ -241,6 +242,7 @@ class DataLoaderLite:
 # ------------------------------------------------------------------------
 if __name__ == "__main__":
     import tiktoken
+    torch.manual_seed(1337)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"using device: {device}")
 
