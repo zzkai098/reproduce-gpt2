@@ -60,11 +60,19 @@ class CausalSelfAttention(nn.Module):
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) #(B, nh, T, hs) (B, 12, T, 64)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) #(B, nh, T, hs) (B, 12, T, 64)
 
-        # (B,nh,T,hs) @ (B,nh,hs,T) -> (B,nh,T,T), then sqrt(hs)
-        att = q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1)))
-        att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
-        att = F.softmax(att, dim=-1) # (B,nh,T,T)
-        y = att @ v # (B,nh,T,T) @ (B, nh, T, hs) -> (B, nh, T, hs)
+        # Flash Attention: fused, memory-efficient attention.
+        # Replaces the manual (q @ k^T) -> scale -> causal mask -> softmax -> (@ v).
+        # Same result, but never materializes the (T, T) score matrix in HBM — it tiles
+        # the computation in on-chip SRAM (with an online softmax), so it's faster and
+        # uses O(T) memory instead of O(T^2). is_causal=True applies the causal mask.
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+        
+        # # (B,nh,T,hs) @ (B,nh,hs,T) -> (B,nh,T,T), then sqrt(hs)
+        # att = q @ k.transpose(-2, -1) * (1.0 / math.sqrt(k.size(-1)))
+        # att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
+        # att = F.softmax(att, dim=-1) # (B,nh,T,T)
+        # y = att @ v # (B,nh,T,T) @ (B, nh, T, hs) -> (B, nh, T, hs)
+        
         y = y.transpose(1, 2).contiguous().view(B, T, C)
         y = self.c_proj(y) # output projection
         return y
@@ -247,16 +255,18 @@ if __name__ == "__main__":
     print(f"using device: {device}")
 
     train_loader = DataLoaderLite(B=4, T=32)
-    model = GPT(GPTConfig())
+    model = GPT(GPTConfig(vocab_size=50304))
     model.to(device)
+    # model = torch.compile(model) # use compile to decrease the cost of memory round trip
 
     # optimize
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
     for i in range(50):
-        optimizer.zero_grad()
+        optimizer.zero_grad()        
         xb, yb = train_loader.next_batch()
         xb, yb = xb.to(device), yb.to(device)
-        logits, loss = model(xb, yb)
+        with torch.autocast(device_type=device , dtype=torch.bfloat16):   # ← bf16 
+            logits, loss = model(xb, yb)
         loss.backward()
         optimizer.step()
         print(f"step {i}, loss: {loss.item()}")
