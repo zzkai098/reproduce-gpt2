@@ -22,6 +22,7 @@ Shape convention: B = batch, T = sequence length, C = n_embd.
 """
 from dataclasses import dataclass
 import tiktoken
+import inspect
 import math
 import torch
 import torch.nn as nn
@@ -219,6 +220,29 @@ class GPT(nn.Module):
 
         return model
     
+    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+        param_dict = {pn:p for pn, p in self.named_parameters() if p.requires_grad}
+        
+        decay_params = [p for p in param_dict.values() if p.dim() >= 2] # 2d matrix weight need decay
+        nodecay_params = [p for p in param_dict.values() if p.dim() < 2] # 1d bias, layernorm do not need decay
+        optim_groups = [
+            {'params': decay_params,   'weight_decay': weight_decay},
+            {'params': nodecay_params, 'weight_decay': 0.0},
+        ]
+        num_decay = sum(p.numel() for p in decay_params)
+        num_nodecay = sum(p.numel() for p in nodecay_params)
+        print(f"decayed tensors: {len(decay_params)}, {num_decay:,} params")
+        print(f"non-decayed tensors: {len(nodecay_params)}, {num_nodecay:,} params")  
+        
+        fused_available = 'fused' in inspect.signature(torch.optim.AdamW).parameters
+        use_fused = fused_available and device_type == 'cuda'
+        print(f"using fused AdamW: {use_fused}")
+        
+        optimizer = torch.optim.AdamW(optim_groups, lr=learning_rate, betas=betas, eps=1e-8, fused=use_fused)
+        
+        return optimizer
+        
+        
     
 class DataLoaderLite:
     def __init__(self, B, T):
