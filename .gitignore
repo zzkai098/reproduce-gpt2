@@ -12,6 +12,7 @@ dist/
 *.npy
 data/
 out/
+log/
 logs/
 
 # Envs / editors

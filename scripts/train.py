@@ -53,6 +53,13 @@ else:
 device_type = 'cuda' if device.startswith('cuda') else 'cpu'
 
 
+# ckpt setup ------------------------------------------------------------------------
+log_dir = 'log'
+if master_process:
+    os.makedirs(log_dir, exist_ok=True)
+save_every = 5000
+
+
 # train setup ------------------------------------------------------------------------
 set_seed(1337 + ddp_rank)
 total_batch_size = 524288 # 2**19 = 0.5m
@@ -123,6 +130,19 @@ for step in range(max_steps):
     tokens_per_sec = total_batch_size / dt
     if master_process:
         print(f"step {step:4d} | loss {loss_accum.item():.4f} | norm {norm:.4f} | lr {lr:.2e} | dt {dt*1000:.0f}ms | tok/s {tokens_per_sec:.0f}")
+        
+    # checkpoint
+    last_step = (step == max_steps - 1)
+    if master_process and (step % save_every == 0 or last_step) and step > 0:
+        checkpoint = {
+            'model': raw_model.state_dict(),
+            'config': raw_model.config,
+            'step': step,
+            'optimizer': optimizer.state_dict(),
+        }
+        ckpt_path = os.path.join(log_dir, f"model_{step:05d}.pt")
+        torch.save(checkpoint, ckpt_path)
+        print(f"saved checkpoint to {ckpt_path}")
     
 if ddp:
     destroy_process_group()
