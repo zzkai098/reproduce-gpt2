@@ -58,6 +58,10 @@ log_dir = 'log'
 if master_process:
     os.makedirs(log_dir, exist_ok=True)
 save_every = 5000
+log_file = os.path.join(log_dir, "log.txt")
+if master_process:
+    with open(log_file, "w") as f:
+        pass
 
 
 # train setup ------------------------------------------------------------------------
@@ -71,7 +75,7 @@ if master_process:
     print(f"grad_accum_steps: {grad_accum_steps}")
 
 train_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='train')
-
+val_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='val')
 
 # model ------------------------------------------------------------------------------
 model = GPT(GPTConfig(vocab_size=50304))
@@ -95,8 +99,34 @@ optimizer = raw_model.configure_optimizers(
 
 
 # training ------------------------------------------------------------------------------
+eval_interval = 100
+val_loss_steps = 20
+
 for step in range(max_steps):
     t0 = time.time()
+    last_step = (step == max_steps - 1)
+    # val ----------------------------------------------------------------------------
+    if step % eval_interval == 0 or last_step:
+        model.eval()
+        val_loader.reset()
+        with torch.no_grad():
+            val_loss_accum = 0.0        
+            for i in range(val_loss_steps):
+                xb, yb = val_loader.next_batch()
+                xb, yb = xb.to(device), yb.to(device)
+                with torch.autocast(device_type=device_type, dtype=torch.bfloat16):
+                    logits, loss = model(xb, yb)
+                loss = loss / val_loss_steps # mean loss
+                val_loss_accum += loss
+        if ddp:
+            dist.all_reduce(val_loss_accum, op=dist.ReduceOp.AVG)
+        if master_process:
+            print(f"step {step} | val loss {val_loss_accum.item():.4f}")
+            with open(log_file, "a") as f:
+                f.write(f"{step} val {val_loss_accum.item():.4f}\n")
+        model.train()
+                
+    # train ----------------------------------------------------------------------------
     optimizer.zero_grad()    
     loss_accum = 0.0
     
@@ -130,9 +160,10 @@ for step in range(max_steps):
     tokens_per_sec = total_batch_size / dt
     if master_process:
         print(f"step {step:4d} | loss {loss_accum.item():.4f} | norm {norm:.4f} | lr {lr:.2e} | dt {dt*1000:.0f}ms | tok/s {tokens_per_sec:.0f}")
+        with open(log_file, "a") as f:
+            f.write(f"{step} train {loss_accum.item():.6f}\n")
         
-    # checkpoint
-    last_step = (step == max_steps - 1)
+    # checkpoint    
     if master_process and (step % save_every == 0 or last_step) and step > 0:
         checkpoint = {
             'model': raw_model.state_dict(),
@@ -147,6 +178,3 @@ for step in range(max_steps):
 if ddp:
     destroy_process_group()
     
-
-
-
