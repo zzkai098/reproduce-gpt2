@@ -71,8 +71,8 @@ B, T = 16, 1024
 assert total_batch_size % (B * T * ddp_world_size) == 0, "total batch should be divisible by B*T*ddp_world_size"
 grad_accum_steps = total_batch_size // (B * T * ddp_world_size) # 524288 // (16 * 1024 * 8) = 4, each gpu now has 4 accum steps
 if master_process:
-    print(f"total desired batch size: {total_batch_size}")
-    print(f"grad_accum_steps: {grad_accum_steps}")
+    print(f"{'batch size (tokens)':<19} : {total_batch_size:,}")
+    print(f"{'grad accum steps':<19} : {grad_accum_steps}")
 
 train_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='train')
 val_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='val')
@@ -121,7 +121,7 @@ for step in range(max_steps):
         if ddp:
             dist.all_reduce(val_loss_accum, op=dist.ReduceOp.AVG)
         if master_process:
-            print(f"step {step} | val loss {val_loss_accum.item():.4f}")
+            print(f"step {step:4d} | val loss {val_loss_accum.item():.4f}")
             with open(log_file, "a") as f:
                 f.write(f"{step} val {val_loss_accum.item():.4f}\n")
         model.train()

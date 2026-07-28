@@ -31,7 +31,7 @@ class DataLoaderLite:
         self.shards = [os.path.join(data_root, s) for s in shards]        
         assert len(self.shards) > 0, f"no shards for split {split}"
         if self.process_rank == 0:
-            print(f"found {len(self.shards)} shards for split {split}")
+            print(f"{split + ' shards':<19} : {len(self.shards)}")
             
         self.reset()
             
