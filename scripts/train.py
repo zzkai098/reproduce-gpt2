@@ -76,7 +76,7 @@ if master_process:
     print(f"{'batch size (tokens)':<19} : {total_batch_size:,}")
     print(f"{'grad accum steps':<19} : {grad_accum_steps}")
 
-train_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='train')
+train_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='train', shuffle=True)
 val_loader = DataLoaderLite(B=B, T=T, process_rank=ddp_rank, num_processes=ddp_world_size, split='val')
 
 # model ------------------------------------------------------------------------------

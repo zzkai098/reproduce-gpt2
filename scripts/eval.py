@@ -2,7 +2,7 @@
 
 Runs a suite of zero-shot benchmarks on both models and prints a comparison table.
 
-  perplexity (lower better) : WikiText-103, WikiText-2
+  perplexity (lower better) : WikiText-103
   multiple choice (higher)  : HellaSwag, PIQA, ARC-Easy, ARC-Challenge,
                               OpenBookQA, Winogrande
 
@@ -46,8 +46,9 @@ def _wikitext(enc, name):
     return torch.tensor(enc.encode_ordinary("\n\n".join(ds["text"])), dtype=torch.long)
 
 PERPLEXITY = {
+    # WikiText-2 shares the exact same test set as WikiText-103 (only the train
+    # split differs), so it would report an identical number — not listed here.
     "WikiText-103": lambda enc: _wikitext(enc, "wikitext-103-raw-v1"),
-    "WikiText-2":   lambda enc: _wikitext(enc, "wikitext-2-raw-v1"),
 }
 
 

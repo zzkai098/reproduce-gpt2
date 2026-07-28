@@ -19,11 +19,13 @@ def load_tokens(filename):
     
 class DataLoaderLite:
     
-    def __init__(self, B, T, process_rank, num_processes, split):
+    def __init__(self, B, T, process_rank, num_processes, split, shuffle=False, seed=1337):
         self.B = B
         self.T = T
         self.process_rank = process_rank
         self.num_processes = num_processes
+        self.shuffle = shuffle
+        self.seed = seed
         assert split in {'train', 'val'}
         
         data_root = os.path.join(os.path.dirname(__file__), '..', 'data', 'dclm_10B')
@@ -36,9 +38,18 @@ class DataLoaderLite:
         self.reset()
             
     def reset(self):
+        self.epoch = 0
+        self.order = self._shard_order()
         self.current_shard = 0
-        self.tokens = load_tokens(self.shards[self.current_shard])
+        self.tokens = load_tokens(self.shards[self.order[self.current_shard]])
         self.current_position = self.B * self.T * self.process_rank
+        
+    def _shard_order(self):
+        order = list(range(len(self.shards)))
+        if self.shuffle:
+            rng = np.random.default_rng(self.seed + self.epoch)
+            rng.shuffle(order)
+        return order
         
     def next_batch(self):
         B, T = self.B, self.T
@@ -48,8 +59,13 @@ class DataLoaderLite:
         # advance by the full stride so processes never read each other's chunks
         self.current_position += B*T * self.num_processes # update the pointer (+ chunk_size * stride)
         if self.current_position + (B*T * self.num_processes + 1) > len(self.tokens):
-            self.current_shard = (self.current_shard + 1) % len(self.shards)
-            self.tokens = load_tokens(self.shards[self.current_shard])
+            self.current_shard += 1
+            if self.current_shard == len(self.shards):
+                self.epoch += 1
+                self.order = self._shard_order()
+                self.current_shard = 0
+            
+            self.tokens = load_tokens(self.shards[self.order[self.current_shard]])
             self.current_position = B * T * self.process_rank
             
         return x, y
