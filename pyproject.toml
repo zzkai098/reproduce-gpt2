@@ -17,8 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "transformers"]  # transformers only to load the reference GPT-2 weights in tests
-data = ["datasets", "tqdm"]        # scripts/prepare_data.py: stream + tokenize the corpus into shards
+dev = ["pytest", "transformers"]            # transformers only to load the reference GPT-2 weights in tests
+data = ["datasets", "tqdm"]                  # scripts/prepare_data.py: stream + tokenize the corpus into shards
+eval = ["datasets", "pandas", "matplotlib"]  # scripts/eval*.py + plot_sweep.py: benchmarks -> CSV -> curve
 
 [tool.setuptools.packages.find]
 include = ["gpt2*"]

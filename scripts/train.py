@@ -7,12 +7,13 @@ and mixed precision (bf16/fp16). Periodically evaluates validation loss and save
 checkpoints.
 
 Runs on a single GPU, or on multiple GPUs with DistributedDataParallel via
-`torchrun`.
+`torchrun`. Hyper-parameters are set at the top of the script (total batch size,
+B, T, LR schedule, max_steps) — edit them there to change the run.
 
 Example
 -------
-    python scripts/train.py configs/gpt2_124m.py             # single GPU
-    torchrun --standalone --nproc_per_node=8 scripts/train.py configs/gpt2_124m.py
+    python scripts/train.py                                  # single GPU
+    torchrun --standalone --nproc_per_node=8 scripts/train.py  # 8 GPUs (DDP)
 """
 
 import os
@@ -55,9 +56,11 @@ device_type = 'cuda' if device.startswith('cuda') else 'cpu'
 
 # ckpt setup ------------------------------------------------------------------------
 log_dir = 'log'
+save_every = 5000
+snapshot_every = 1000
+
 if master_process:
     os.makedirs(log_dir, exist_ok=True)
-save_every = 5000
 log_file = os.path.join(log_dir, "log.txt")
 if master_process:
     with open(log_file, "w") as f:
@@ -163,7 +166,7 @@ for step in range(max_steps):
         with open(log_file, "a") as f:
             f.write(f"{step} train {loss_accum.item():.6f}\n")
         
-    # checkpoint    
+    # checkpoint ----------------------------------------------------------------------------
     if master_process and (step % save_every == 0 or last_step) and step > 0:
         checkpoint = {
             'model': raw_model.state_dict(),
@@ -174,6 +177,18 @@ for step in range(max_steps):
         ckpt_path = os.path.join(log_dir, f"model_{step:05d}.pt")
         torch.save(checkpoint, ckpt_path)
         print(f"saved checkpoint to {ckpt_path}")
+        
+    # lightweight snapshot (weights only) — for the offline eval curve
+    if master_process and (step % snapshot_every == 0 or last_step) and step > 0:
+        snapshot = {
+            'model': raw_model.state_dict(),
+            'config': raw_model.config,
+            'step': step,
+        }
+        snap_path = os.path.join(log_dir, f"snap_{step:05d}.pt")
+        torch.save(snapshot, snap_path)
+        print(f"saved snapshot to {snap_path}")
+    
     
 if ddp:
     destroy_process_group()
