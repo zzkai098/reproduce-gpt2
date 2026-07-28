@@ -20,7 +20,7 @@ Four levels, from free to full — you can go as far as your compute budget allo
 | 1. **Architecture + weight parity** | Build GPT-2 and load the official 124M weights; verify logits match Hugging Face exactly | Free (CPU) |
 | 2. **Inference & fine-tuning** | Generate from pretrained GPT-2; fine-tune it on a small custom corpus | Free (Colab GPU) |
 | 3. **Small pretraining run** | Train a scaled-down model to watch the full recipe work (loss drops, machinery runs) | Free (Colab GPU) |
-| 4. **Full 124M reproduction** | Pretrain 124M on ~10B tokens (FineWeb) to GPT-2's eval loss | Multi-GPU cloud (~$20–60) |
+| 4. **Full 124M reproduction** | Pretrain 124M on ~10B tokens (DCLM-baseline) to GPT-2's eval loss | Multi-GPU cloud (~$20–60) |
 
 Levels 1–3 need no paid hardware. Level 4 is the optional endgame on rented GPUs.
 
@@ -38,6 +38,27 @@ make it the *real* GPT-2:
 - **Training recipe**: AdamW with decoupled weight decay on 2D weights only,
   cosine LR schedule with warmup, gradient accumulation to a ~0.5M-token batch,
   gradient clipping, and bf16/fp16 mixed precision.
+
+## Data
+
+The 124M reproduction trains on a **10B-token sample of
+[DCLM-baseline](https://huggingface.co/datasets/mlfoundations/dclm-baseline-1.0)**,
+a high-quality web corpus filtered from Common Crawl with a fastText quality
+classifier.
+
+- **Why DCLM (over FineWeb-Edu).** DCLM's more diverse / conversational filtering
+  scores higher on **HellaSwag** — the benchmark used to check whether the
+  reproduction matches GPT-2 (~29.4%) — and its style is closer to GPT-2's
+  original WebText than the education-focused FineWeb-Edu.
+- **Why 10B tokens.** This matches GPT-2's original training scale. A 124M model
+  saturates long before DCLM's full 4T corpus: by Chinchilla scaling
+  (~20 tokens/param) 124M is compute-optimal around ~2.5B tokens, so 10B is
+  already generous while staying faithful to the original — more data would need
+  a bigger model to pay off.
+- **Pipeline (`scripts/prepare_data.py`).** Streams DCLM from the Hugging Face Hub
+  (never downloads the full 4T), tokenizes documents in parallel with the GPT-2
+  BPE, and writes fixed-size `.npy` shards of `uint16` token ids (100M tokens per
+  shard, ~20GB total). Shard 0 is held out as the validation split.
 
 ## Project layout
 
