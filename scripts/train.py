@@ -18,7 +18,6 @@ Example
 
 import os
 import time
-import math
 import torch
 
 # DDP
