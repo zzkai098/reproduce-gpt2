@@ -54,7 +54,7 @@ def main():
     ap.add_argument("--temperature", type=float, default=1.0)
     ap.add_argument("--top-k", type=int, default=50)
     ap.add_argument("--num-samples", type=int, default=3)
-    ap.add_argument("--stream", action="store_true", help="streaming output")
+    ap.add_argument("--stream", action=argparse.BooleanOptionalAction, default=True, help="streaming output (use --no-stream to disable)")
     args = ap.parse_args()
     
     device = get_device()
