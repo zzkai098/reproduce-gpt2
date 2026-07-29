@@ -69,7 +69,7 @@ if master_process:
 # train setup ------------------------------------------------------------------------
 set_seed(1337 + ddp_rank)
 total_batch_size = 524288 # 2**19 = 0.5m
-B, T = 16, 1024 
+B, T = 32, 1024
 assert total_batch_size % (B * T * ddp_world_size) == 0, "total batch should be divisible by B*T*ddp_world_size"
 grad_accum_steps = total_batch_size // (B * T * ddp_world_size) # 524288 // (16 * 1024 * 8) = 4, each gpu now has 4 accum steps
 if master_process:
@@ -90,7 +90,7 @@ raw_model = model.module if ddp else model
 max_lr = 6e-4
 min_lr = max_lr * 0.1
 warmup_steps = 715 # 375e6 /524288 = 715.2557373047 gpt3 paper use 375m tokens for warmup 
-max_steps = 19073 # 10B / 0.5M = 10e9 / 524288 ≈ 19073 use 10b tokens for 1 epoch
+max_steps = 19073 * 4 # 10B / 0.5M = 10e9 / 524288 ≈ 19073 use 10b tokens for 1 epoch
 
 optimizer = raw_model.configure_optimizers(
     weight_decay=0.1, 
@@ -101,7 +101,7 @@ optimizer = raw_model.configure_optimizers(
 
 
 # training ------------------------------------------------------------------------------
-eval_interval = 100
+eval_interval = 250
 val_loss_steps = 20
 
 for step in range(max_steps):
