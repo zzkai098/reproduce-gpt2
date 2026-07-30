@@ -1,0 +1,5 @@
+step,WikiText-103_ppl,HellaSwag_acc_norm,ARC-Easy_acc_norm,ARC-Challenge_acc_norm,OpenBookQA_acc_norm,Winogrande_acc_norm
+19000,53.612,0.322,0.357,0.217,0.242,0.492
+38000,43.525,0.337,0.409,0.208,0.242,0.501
+57000,37.108,0.334,0.409,0.235,0.262,0.514
+76291,34.441,0.329,0.408,0.227,0.268,0.51

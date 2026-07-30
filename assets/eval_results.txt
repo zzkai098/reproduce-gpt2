@@ -1,0 +1,40 @@
+loading weights from pretrained gpt: gpt2
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 6630.74it/s]
+
+=== WikiText-103 perplexity (287,644 tokens, lower is better) ===
+  official gpt2    : 25.44
+  reproduced       : 34.44
+
+=== HellaSwag (1000 examples, higher is better) ===
+  official gpt2    : acc 33.7%   acc_norm 34.3%
+  reproduced       : acc 32.4%   acc_norm 32.9%
+
+=== PIQA: SKIPPED (RuntimeError: Dataset scripts are no longer supported, but found piqa.py) ===
+Generating train split:   0%|          | 0/2251 [00:00<?, ? examples/s]Generating train split:  44%|████▍     | 1000/2251 [00:00<00:00, 6832.47 examples/s]Generating train split: 100%|██████████| 2251/2251 [00:00<00:00, 14613.39 examples/s]
+Generating test split:   0%|          | 0/2376 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 2376/2376 [00:00<00:00, 288851.52 examples/s]
+Generating validation split:   0%|          | 0/570 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 570/570 [00:00<00:00, 131194.28 examples/s]
+
+=== ARC-Easy (1000 examples, higher is better) ===
+  official gpt2    : acc 41.4%   acc_norm 39.2%
+  reproduced       : acc 42.2%   acc_norm 40.8%
+Generating train split:   0%|          | 0/1119 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 1119/1119 [00:00<00:00, 135507.17 examples/s]
+Generating test split:   0%|          | 0/1172 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 1172/1172 [00:00<00:00, 209001.88 examples/s]
+Generating validation split:   0%|          | 0/299 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 299/299 [00:00<00:00, 92539.62 examples/s]
+
+=== ARC-Challenge (1000 examples, higher is better) ===
+  official gpt2    : acc 19.1%   acc_norm 22.5%
+  reproduced       : acc 20.5%   acc_norm 22.7%
+Generating train split:   0%|          | 0/4957 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 4957/4957 [00:00<00:00, 392412.00 examples/s]
+Generating validation split:   0%|          | 0/500 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 500/500 [00:00<00:00, 144441.90 examples/s]
+Generating test split:   0%|          | 0/500 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 500/500 [00:00<00:00, 125728.54 examples/s]
+
+=== OpenBookQA (500 examples, higher is better) ===
+  official gpt2    : acc 15.2%   acc_norm 27.4%
+  reproduced       : acc 14.4%   acc_norm 26.8%
+Generating train split:   0%|          | 0/40398 [00:00<?, ? examples/s]Generating train split: 100%|██████████| 40398/40398 [00:00<00:00, 716224.35 examples/s]
+Generating test split:   0%|          | 0/1767 [00:00<?, ? examples/s]Generating test split: 100%|██████████| 1767/1767 [00:00<00:00, 289856.28 examples/s]
+Generating validation split:   0%|          | 0/1267 [00:00<?, ? examples/s]Generating validation split: 100%|██████████| 1267/1267 [00:00<00:00, 272704.02 examples/s]
+
+=== Winogrande (1000 examples, higher is better) ===
+  official gpt2    : acc 46.6%   acc_norm 48.4%
+  reproduced       : acc 50.4%   acc_norm 51.0%
