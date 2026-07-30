@@ -32,9 +32,10 @@ from gpt2.eval import evaluate_perplexity, evaluate_multiple_choice
 from eval import load_reproduced, PERPLEXITY, MULTIPLE_CHOICE
 
 
-# Subset of eval.py's registries to track over training — kept small on purpose.
+# Subset of eval.py's registries to track over training (PIQA omitted — its Hub
+# dataset is a loading script that recent `datasets` no longer supports).
 PPL_BENCHMARKS = ["WikiText-103"]
-MC_BENCHMARKS = ["HellaSwag"]
+MC_BENCHMARKS = ["HellaSwag", "ARC-Easy", "ARC-Challenge", "OpenBookQA", "Winogrande"]
 
 
 def snapshot_step(path):
@@ -63,13 +64,22 @@ def main():
     assert snaps, f"no snap_*.pt found in {args.snap_dir}"
     print(f"found {len(snaps)} snapshots: steps {[snapshot_step(s) for s in snaps]}")
 
-    # load each dataset ONCE, reuse across all snapshots
-    ppl_data = {name: PERPLEXITY[name](enc) for name in PPL_BENCHMARKS}
-    mc_data = {name: MULTIPLE_CHOICE[name](enc, limit) for name in MC_BENCHMARKS}
+    # load each dataset ONCE, reuse across all snapshots; skip any that fail to load
+    ppl_data, mc_data = {}, {}
+    for name in PPL_BENCHMARKS:
+        try:
+            ppl_data[name] = PERPLEXITY[name](enc)
+        except Exception as e:
+            print(f"skip {name}: {type(e).__name__}: {e}")
+    for name in MC_BENCHMARKS:
+        try:
+            mc_data[name] = MULTIPLE_CHOICE[name](enc, limit)
+        except Exception as e:
+            print(f"skip {name}: {type(e).__name__}: {e}")
 
-    # columns: step, one perplexity col + one acc_norm col per benchmark
-    ppl_cols = [f"{name}_ppl" for name in PPL_BENCHMARKS]
-    mc_cols = [f"{name}_acc_norm" for name in MC_BENCHMARKS]
+    # columns: step, then one column per benchmark that actually loaded
+    ppl_cols = [f"{name}_ppl" for name in ppl_data]
+    mc_cols = [f"{name}_acc_norm" for name in mc_data]
     fieldnames = ["step"] + ppl_cols + mc_cols
 
     with open(out_path, "w", newline="") as f:
