@@ -42,7 +42,7 @@ def load_official(device):
 
 # ---- perplexity datasets ---------------------------------------------------
 def _wikitext(enc, name):
-    ds = load_dataset("wikitext", name, split="test")
+    ds = load_dataset("Salesforce/wikitext", name, split="test")
     return torch.tensor(enc.encode_ordinary("\n\n".join(ds["text"])), dtype=torch.long)
 
 PERPLEXITY = {
@@ -60,19 +60,19 @@ def _sub(ds, limit):
     return ds.select(range(min(limit, len(ds)))) if limit else ds
 
 def hellaswag_examples(enc, limit):
-    ds = _sub(load_dataset("hellaswag", split="validation"), limit)
+    ds = _sub(load_dataset("Rowan/hellaswag", split="validation"), limit)
     return [_mc(enc.encode_ordinary(e["ctx"]),
                [enc.encode_ordinary(" " + x) for x in e["endings"]],
                int(e["label"])) for e in ds]
 
 def piqa_examples(enc, limit):
-    ds = _sub(load_dataset("piqa", split="validation", trust_remote_code=True), limit)
+    ds = _sub(load_dataset("ybisk/piqa", split="validation"), limit)
     return [_mc(enc.encode_ordinary(e["goal"]),
                [enc.encode_ordinary(" " + e["sol1"]), enc.encode_ordinary(" " + e["sol2"])],
                int(e["label"])) for e in ds]
 
 def _arc(enc, limit, config):
-    ds = _sub(load_dataset("ai2_arc", config, split="test"), limit)
+    ds = _sub(load_dataset("allenai/ai2_arc", config, split="test"), limit)
     out = []
     for e in ds:
         labels, texts = e["choices"]["label"], e["choices"]["text"]
@@ -84,13 +84,13 @@ def _arc(enc, limit, config):
     return out
 
 def openbookqa_examples(enc, limit):
-    ds = _sub(load_dataset("openbookqa", "main", split="test"), limit)
+    ds = _sub(load_dataset("allenai/openbookqa", "main", split="test"), limit)
     return [_mc(enc.encode_ordinary(e["question_stem"]),
                [enc.encode_ordinary(" " + t) for t in e["choices"]["text"]],
                e["choices"]["label"].index(e["answerKey"])) for e in ds]
 
 def winogrande_examples(enc, limit):
-    ds = _sub(load_dataset("winogrande", "winogrande_xl", split="validation", trust_remote_code=True), limit)
+    ds = _sub(load_dataset("allenai/winogrande", "winogrande_xl", split="validation"), limit)
     out = []
     for e in ds:
         prefix, suffix = e["sentence"].split("_", 1)      # blank marks the two-option split
@@ -129,7 +129,11 @@ def main():
 
     # perplexity
     for name, loader in PERPLEXITY.items():
-        toks = loader(enc)
+        try:
+            toks = loader(enc)
+        except Exception as e:
+            print(f"\n=== {name} perplexity: SKIPPED ({type(e).__name__}: {e}) ===")
+            continue
         print(f"\n=== {name} perplexity ({len(toks):,} tokens, lower is better) ===")
         for mname, model in models.items():
             ppl = evaluate_perplexity(model, toks, block_size, device, device_type)
@@ -137,7 +141,11 @@ def main():
 
     # multiple choice
     for name, loader in MULTIPLE_CHOICE.items():
-        ex = loader(enc, limit)
+        try:
+            ex = loader(enc, limit)
+        except Exception as e:
+            print(f"\n=== {name}: SKIPPED ({type(e).__name__}: {e}) ===")
+            continue
         print(f"\n=== {name} ({len(ex)} examples, higher is better) ===")
         for mname, model in models.items():
             r = evaluate_multiple_choice(model, ex, block_size, device, device_type)
