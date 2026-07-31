@@ -21,6 +21,30 @@ evaluation suite, and analysis below are my own.
 
 ---
 
+## Architecture
+
+GPT-2 124M ("small") — a decoder-only Transformer:
+
+| | |
+|---|---|
+| Parameters | 124M (124,439,808) |
+| Layers (blocks) | 12 |
+| Model dim (`n_embd`) | 768 |
+| Attention heads | 12 (head dim 64) |
+| Context length | 1024 |
+| Vocabulary | 50,257 (padded to 50,304 for training) |
+| MLP hidden | 3072 (4× `n_embd`) |
+
+```
+tokens ─► wte  (+ wpe positional embeddings)
+        │
+        │   12× Block  (pre-LayerNorm + residual):
+        │        x = x + Attn(LayerNorm(x))     # causal multi-head, Flash Attention
+        │        x = x + MLP(LayerNorm(x))       # 4× hidden, GELU
+        │
+        └─► LayerNorm ─► lm_head  (weights tied to wte) ─► logits (B, T, vocab)
+```
+
 ## Results
 
 Trained model vs. OpenAI's official GPT-2 124M, evaluated head-to-head with the
@@ -54,6 +78,26 @@ same code (`scripts/eval.py`). Multiple-choice reports length-normalized accurac
   trained on WebText (Reddit-outbound links), which is close to Wikipedia; this
   model trained on DCLM (general filtered web). The fairer comparison is the
   downstream tasks above, where the two are on par.
+
+## Quick start
+
+Install, pull the trained weights, and generate:
+
+```bash
+pip install -e .
+```
+
+```python
+from huggingface_hub import hf_hub_download
+ckpt = hf_hub_download("zzkai098/gpt2-124m-ckpt", "model_final.pt", repo_type="model")
+```
+
+```bash
+python scripts/sample.py --ckpt model_final.pt --prompt "In the future, AI will"
+```
+
+To rebuild the model end-to-end (data → train → eval), see
+[Reproduce from scratch](#reproduce-from-scratch) below.
 
 ## Training
 
@@ -106,42 +150,6 @@ python scripts/sample.py --ckpt model_final.pt --prompt "In the future, AI will"
 ```
 
 ---
-
-## Architecture
-
-GPT-2 124M ("small") — a decoder-only Transformer:
-
-| | |
-|---|---|
-| Parameters | 124M (124,439,808) |
-| Layers (blocks) | 12 |
-| Model dim (`n_embd`) | 768 |
-| Attention heads | 12 (head dim 64) |
-| Context length | 1024 |
-| Vocabulary | 50,257 (padded to 50,304 for training) |
-| MLP hidden | 3072 (4× `n_embd`) |
-
-```
-tokens ─► wte  (+ wpe positional embeddings)
-        │
-        │   12× Block  (pre-LayerNorm + residual):
-        │        x = x + Attn(LayerNorm(x))     # causal multi-head, Flash Attention
-        │        x = x + MLP(LayerNorm(x))       # 4× hidden, GELU
-        │
-        └─► LayerNorm ─► lm_head  (weights tied to wte) ─► logits (B, T, vocab)
-```
-
-## How GPT-2 differs from a toy GPT
-
-Same decoder-only Transformer, but with the details that make it the *real* GPT-2:
-
-- **Byte-level BPE** (50,257-token vocab) via `tiktoken`.
-- **Learned positional embeddings** (`wpe`).
-- **GELU** activation (tanh approximation), not ReLU.
-- **Weight tying** — `lm_head` shares weights with the token embedding.
-- **Scaled residual init** (`1/√(2·n_layer)`) from the GPT-2 paper.
-- **Flash Attention** via `F.scaled_dot_product_attention` (O(T) memory, no
-  materialized attention matrix).
 
 ## Data
 
@@ -263,7 +271,7 @@ Tensors flow as **`(B, T, C)`**: `B` sequences, each `T = 1024` tokens, embedded
   steps don't each trigger a cross-GPU all-reduce — the gradients are exchanged just
   once per optimizer step, not four times.
 
-## Reproduce
+## Reproduce from scratch
 
 ```bash
 pip install -e .                                  # + [dev] for tests, [data] for prep, [eval] for benchmarks
@@ -282,13 +290,6 @@ python scripts/eval.py --ckpt log/model_76291.pt
 
 # 5) generate
 python scripts/sample.py --ckpt log/model_76291.pt --prompt "Hello, I'm a language model,"
-```
-
-Download the trained weights instead of retraining:
-
-```python
-from huggingface_hub import hf_hub_download
-ckpt = hf_hub_download("zzkai098/gpt2-124m-ckpt", "model_final.pt", repo_type="model")
 ```
 
 ## Project layout
