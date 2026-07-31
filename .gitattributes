@@ -1,0 +1,3 @@
+# Jupyter notebooks embed image outputs (huge in bytes) — exclude them from
+# GitHub language stats so the Python source is what shows.
+*.ipynb linguist-documentation
