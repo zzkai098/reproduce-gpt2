@@ -96,6 +96,16 @@ hf_hub_download("zzkai098/gpt2-124m-ckpt", "model_final.pt", repo_type="model", 
 python scripts/sample.py --ckpt model_final.pt --prompt "In the future, AI will"
 ```
 
+Sampling flags: `--tokens` (number of new tokens), `--temperature` (0.7 focused →
+1.0 diverse), `--top-k`, `--num-samples`, and `--no-stream` (print full samples at
+once instead of streaming). For example:
+
+```bash
+python scripts/sample.py --ckpt model_final.pt \
+    --prompt "The best way to learn programming is" \
+    --tokens 120 --temperature 0.8 --top-k 50 --no-stream --num-samples 3
+```
+
 To rebuild the model end-to-end (data → train → eval), see
 [Reproduce from scratch](#reproduce-from-scratch) below.
 
@@ -313,6 +323,18 @@ reproduce-gpt2/
 ├── assets/                   # figures + eval tables
 └── pyproject.toml
 ```
+
+## Limitations
+
+A faithful reproduction of a 2019-era 124M model — small by today's standards:
+
+- **Reasoning is near chance.** Clearly above random only on ARC-Easy and HellaSwag;
+  ARC-Challenge, Winogrande, and OpenBookQA are essentially guessing.
+- **Coherence degrades over long generations** — grammatical but rambly.
+- **English-only**, trained on filtered web text (DCLM) — inherits its biases.
+- **Base model** — not instruction-tuned, chat-formatted, or safety-aligned.
+- **WikiText perplexity trails official GPT-2** — a training-distribution effect,
+  not a capability gap (see [Results](#results)).
 
 ## License
 
