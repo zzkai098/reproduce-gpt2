@@ -1,5 +1,9 @@
 # reproduce-gpt2
 
+<p align="center">
+  <img src="assets/sample_stream.gif" width="760" alt="GPT-2 124M streaming a generated sample">
+</p>
+
 A faithful, **from-scratch reproduction of OpenAI's GPT-2 (124M)** in PyTorch —
 architecture, distributed training, and evaluation all written by hand. Trained on
 **10B tokens of DCLM-baseline for 4 epochs** on 8×RTX 4090D (~13 h, ~$27), the
