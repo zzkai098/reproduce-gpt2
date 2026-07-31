@@ -89,7 +89,7 @@ pip install -e .
 
 ```python
 from huggingface_hub import hf_hub_download
-ckpt = hf_hub_download("zzkai098/gpt2-124m-ckpt", "model_final.pt", repo_type="model")
+hf_hub_download("zzkai098/gpt2-124m-ckpt", "model_final.pt", repo_type="model", local_dir=".")
 ```
 
 ```bash
