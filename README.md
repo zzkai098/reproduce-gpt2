@@ -107,6 +107,30 @@ python scripts/sample.py --ckpt model_final.pt --prompt "In the future, AI will"
 
 ---
 
+## Architecture
+
+GPT-2 124M ("small") — a decoder-only Transformer:
+
+| | |
+|---|---|
+| Parameters | 124M (124,439,808) |
+| Layers (blocks) | 12 |
+| Model dim (`n_embd`) | 768 |
+| Attention heads | 12 (head dim 64) |
+| Context length | 1024 |
+| Vocabulary | 50,257 (padded to 50,304 for training) |
+| MLP hidden | 3072 (4× `n_embd`) |
+
+```
+tokens ─► wte  (+ wpe positional embeddings)
+        │
+        │   12× Block  (pre-LayerNorm + residual):
+        │        x = x + Attn(LayerNorm(x))     # causal multi-head, Flash Attention
+        │        x = x + MLP(LayerNorm(x))       # 4× hidden, GELU
+        │
+        └─► LayerNorm ─► lm_head  (weights tied to wte) ─► logits (B, T, vocab)
+```
+
 ## How GPT-2 differs from a toy GPT
 
 Same decoder-only Transformer, but with the details that make it the *real* GPT-2:
