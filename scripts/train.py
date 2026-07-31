@@ -69,7 +69,7 @@ if master_process:
 # train setup ------------------------------------------------------------------------
 set_seed(1337 + ddp_rank)
 total_batch_size = 524288 # 2**19 = 0.5m
-B, T = 32, 1024
+B, T = 16, 1024  # 16 fits the 24GB RTX 4090D; 8 GPUs -> grad_accum 4
 assert total_batch_size % (B * T * ddp_world_size) == 0, "total batch should be divisible by B*T*ddp_world_size"
 grad_accum_steps = total_batch_size // (B * T * ddp_world_size) # 524288 // (16 * 1024 * 8) = 4, each gpu now has 4 accum steps
 if master_process:
